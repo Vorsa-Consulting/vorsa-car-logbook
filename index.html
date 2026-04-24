@@ -153,6 +153,29 @@
     }
     .info strong { color: var(--text); font-weight: 700; }
     .footer-note { margin-top: 10px; color: var(--muted); line-height: 1.5; font-size: 0.92rem; }
+    .warning-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255, 209, 102, 0.10);
+      border: 1px solid rgba(255, 209, 102, 0.22);
+      color: #ffe7b0;
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+    .brand-footer {
+      position: fixed;
+      left: 14px;
+      bottom: 14px;
+      z-index: 5;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(8, 14, 28, 0.38);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+    }
     .tiny { font-size: 0.86rem; color: var(--muted); }
     .overlay {
       position: fixed;
@@ -267,10 +290,15 @@
           <div class="footer-note">
             Trips are saved in your browser storage on that device. If you clear browser data or use another phone, the logbook will start empty again unless you export and re-import a backup.
           </div>
+          <div class="warning-note">
+            Important: please download an Excel copy of your records before resetting browser history or clearing site data.
+          </div>
         </section>
       </div>
     </div>
   </div>
+
+  <div class="brand-footer">created by Vorsa Consulting</div>
 
   <div class="overlay" id="odoOverlay" aria-hidden="true">
     <div class="modal">
