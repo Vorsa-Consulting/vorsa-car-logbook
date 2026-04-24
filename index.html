@@ -4,16 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0c1326" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Car Logbook" />
-  <link rel="manifest" href="github-logbook.webmanifest" />
   <title>Car Logbook</title>
   <style>
     :root {
       --bg: #09111f;
       --panel: rgba(17, 28, 51, 0.88);
-      --panel-2: rgba(24, 37, 68, 0.88);
       --line: rgba(255, 255, 255, 0.10);
       --text: #e6eefc;
       --muted: #9fb0d1;
@@ -53,7 +48,6 @@
     }
     .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #07101d; border: none; font-weight: 800; }
     .btn-danger { background: rgba(255, 107, 107, 0.10); color: #ffd3d3; border-color: rgba(255, 107, 107, 0.22); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .card {
       background: linear-gradient(180deg, var(--panel), rgba(255, 255, 255, 0.03));
       border: 1px solid var(--line);
@@ -183,7 +177,6 @@
     .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.5; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
     .modal-actions .btn { min-width: 120px; }
-    .field-row { display: grid; gap: 10px; }
     @media (min-width: 900px) {
       .layout { grid-template-columns: 1.6fr 0.95fr; }
       .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -203,12 +196,11 @@
     <div class="hero">
       <div>
         <h1>Car Logbook</h1>
-        <p>Hosted on GitHub Pages, with each person's trips stored in their own Google Drive app data file. New Google accounts get a blank logbook the first time they sign in.</p>
+        <p>Local phone storage version. It opens from the GitHub link and keeps each person's trips on their own device in that browser.</p>
       </div>
       <div class="top-actions">
-        <button class="btn btn-primary" id="addTripBtn" disabled>+ Add trip</button>
-        <button class="btn" id="exportBtn" disabled>Download Excel</button>
-        <button class="btn" id="installBtn">Install app</button>
+        <button class="btn btn-primary" id="addTripBtn">+ Add trip</button>
+        <button class="btn" id="exportBtn">Download Excel</button>
       </div>
     </div>
 
@@ -216,9 +208,9 @@
       <div class="summary-head">
         <div>
           <h2 style="margin:0 0 6px">Financial year summary</h2>
-          <div class="tiny" id="storageState">Connect Google Drive to load your private logbook.</div>
+          <div class="tiny" id="storageState">Stored locally on this device</div>
         </div>
-        <span class="badge" id="fyBadge">Not connected</span>
+        <span class="badge" id="fyBadge"></span>
       </div>
       <div class="metrics">
         <div class="metric">
@@ -250,30 +242,10 @@
           <h2>Trips</h2>
           <span class="badge" id="tripCount">0 trips</span>
         </div>
-        <div id="tripList" class="trip-list">
-          <div class="empty">Sign in with Google Drive to begin.</div>
-        </div>
+        <div id="tripList" class="trip-list"></div>
       </section>
 
       <div class="grid-2">
-        <section class="card panel">
-          <div class="panel-header">
-            <h2>Google Drive</h2>
-          </div>
-          <div class="field-row">
-            <input id="clientIdInput" placeholder="Paste Google OAuth Client ID" />
-            <div class="info"><span>Status</span><strong id="driveStatus">Disconnected</strong></div>
-          </div>
-          <div class="modal-actions" style="justify-content:flex-start">
-            <button class="btn btn-primary" id="connectDriveBtn">Connect</button>
-            <button class="btn" id="syncDriveBtn" disabled>Sync now</button>
-            <button class="btn btn-danger" id="signOutBtn" disabled>Sign out</button>
-          </div>
-          <div class="footer-note">
-            This uses Google Drive app data storage, so each Google account gets its own hidden file. It only works from HTTPS, which GitHub Pages provides.
-          </div>
-        </section>
-
         <section class="card panel">
           <div class="panel-header">
             <h2>FY details</h2>
@@ -285,7 +257,16 @@
             <div class="info"><span>Personal km</span><strong id="personalKm">0</strong></div>
             <div class="info"><span>Current odometer</span><strong id="currentOdo">-</strong></div>
           </div>
-          <div class="footer-note">On the first successful Google sign-in, or each new 1 July reset, the app prompts for the odometer reading.</div>
+          <div class="footer-note">On first launch, and again each 1 July, the app will ask for the odometer reading for the new financial year.</div>
+        </section>
+
+        <section class="card panel">
+          <div class="panel-header">
+            <h2>How storage works</h2>
+          </div>
+          <div class="footer-note">
+            Trips are saved in your browser storage on that device. If you clear browser data or use another phone, the logbook will start empty again unless you export and re-import a backup.
+          </div>
         </section>
       </div>
     </div>
@@ -303,39 +284,16 @@
     </div>
   </div>
 
-  <div class="overlay" id="installOverlay" aria-hidden="true">
-    <div class="modal">
-      <h3>Install the app</h3>
-      <p id="installText">On Android, you may see an install prompt. On iPhone, tap Share then Add to Home Screen.</p>
-      <div class="modal-actions">
-        <button class="btn btn-primary" id="installCloseBtn">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     (() => {
-      const STORAGE_KEY = 'car-logbook-github-v1';
-      const DRIVE_FILE_NAME = 'car-logbook.json';
+      const STORAGE_KEY = 'car-logbook-local-v1';
       const TIME_ZONE = 'Australia/Sydney';
-      const state = blankState();
-      const meta = loadMeta();
-
-      let isLoadedFromDrive = false;
-      let accessToken = '';
-      let accessTokenExpiresAt = 0;
-      let googleScriptPromise = null;
-      let backupTimer = null;
-      let deferredInstallPrompt = null;
+      const state = loadState();
 
       const els = {
         addTripBtn: document.getElementById('addTripBtn'),
         exportBtn: document.getElementById('exportBtn'),
-        installBtn: document.getElementById('installBtn'),
-        installOverlay: document.getElementById('installOverlay'),
-        installCloseBtn: document.getElementById('installCloseBtn'),
-        installText: document.getElementById('installText'),
         tripList: document.getElementById('tripList'),
         tripCount: document.getElementById('tripCount'),
         fyBadge: document.getElementById('fyBadge'),
@@ -357,31 +315,29 @@
         odoInput: document.getElementById('odoInput'),
         odoSaveBtn: document.getElementById('odoSaveBtn'),
         odoLaterBtn: document.getElementById('odoLaterBtn'),
-        driveStatus: document.getElementById('driveStatus'),
-        clientIdInput: document.getElementById('clientIdInput'),
-        connectDriveBtn: document.getElementById('connectDriveBtn'),
-        syncDriveBtn: document.getElementById('syncDriveBtn'),
-        signOutBtn: document.getElementById('signOutBtn'),
-        storageState: document.getElementById('storageState'),
       };
 
-      function blankState() {
-        return { trips: [], odometerByFY: {}, dismissedPrompts: {} };
-      }
-
-      function loadMeta() {
+      function loadState() {
         try {
-          const raw = localStorage.getItem(`${STORAGE_KEY}-meta`);
-          if (!raw) return { googleClientId: '' };
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return { trips: [], odometerByFY: {}, dismissedPrompts: {} };
           const parsed = JSON.parse(raw);
-          return { googleClientId: parsed.googleClientId || '' };
+          return {
+            trips: Array.isArray(parsed.trips) ? parsed.trips : [],
+            odometerByFY: parsed.odometerByFY && typeof parsed.odometerByFY === 'object' ? parsed.odometerByFY : {},
+            dismissedPrompts: parsed.dismissedPrompts && typeof parsed.dismissedPrompts === 'object' ? parsed.dismissedPrompts : {},
+          };
         } catch {
-          return { googleClientId: '' };
+          return { trips: [], odometerByFY: {}, dismissedPrompts: {} };
         }
       }
 
-      function saveMeta() {
-        localStorage.setItem(`${STORAGE_KEY}-meta`, JSON.stringify({ googleClientId: meta.googleClientId }));
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          trips: state.trips,
+          odometerByFY: state.odometerByFY,
+          dismissedPrompts: state.dismissedPrompts,
+        }));
       }
 
       function sydneyDateString(date = new Date()) {
@@ -450,7 +406,7 @@
         const odometerStart = currentOdometerStart();
         const currentOdo = typeof odometerStart === 'number' ? odometerStart + totals.total : null;
 
-        els.fyBadge.textContent = isLoadedFromDrive ? `Financial year ${fy.label}` : 'Not connected';
+        els.fyBadge.textContent = `Financial year ${fy.label}`;
         els.fyStartInfo.textContent = formatDateLabel(fy.start);
         els.fyEndInfo.textContent = formatDateLabel(fy.end);
         els.tripCount.textContent = `${tripsForCurrentFY().length} trips`;
@@ -470,14 +426,12 @@
       function renderTrips() {
         const trips = tripsForCurrentFY();
         els.tripList.innerHTML = '';
-        if (!isLoadedFromDrive) {
-          els.tripList.innerHTML = '<div class="empty">Connect Google Drive to load or create your private logbook.</div>';
-          return;
-        }
+
         if (trips.length === 0) {
           els.tripList.innerHTML = '<div class="empty">No trips yet. Tap "+ Add trip" to begin logging.</div>';
           return;
         }
+
         for (const trip of trips) {
           const row = document.createElement('div');
           row.className = 'trip';
@@ -498,14 +452,14 @@
               if (input.dataset.field === 'date') target.date = input.value || sydneyDateString();
               if (input.dataset.field === 'kms') target.kms = input.value.trim() === '' ? '' : Number(input.value);
               if (input.dataset.field === 'type') target.type = input.value;
-              scheduleBackup();
+              saveState();
               refresh();
             });
           });
 
           row.querySelector('[data-delete="1"]').addEventListener('click', () => {
             state.trips = state.trips.filter(item => item.id !== trip.id);
-            scheduleBackup();
+            saveState();
             refresh();
           });
 
@@ -516,6 +470,12 @@
       function refresh() {
         renderTrips();
         updateSummary();
+      }
+
+      function addTrip() {
+        state.trips.unshift({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, date: sydneyDateString(), kms: '', type: 'personal' });
+        saveState();
+        refresh();
       }
 
       function openOdometerPrompt(force = false) {
@@ -543,29 +503,14 @@
         }
         state.odometerByFY[fy.start] = value;
         delete state.dismissedPrompts[fy.start];
+        saveState();
         closeOdometerPrompt();
-        scheduleBackup();
         refresh();
       }
 
       function maybePromptForOdometer() {
         const fy = getFinancialYear();
         if (state.odometerByFY[fy.start] === undefined) openOdometerPrompt(true);
-      }
-
-      function generateId() {
-        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      }
-
-      function addTrip() {
-        state.trips.unshift({
-          id: generateId(),
-          date: sydneyDateString(),
-          kms: '',
-          type: 'personal',
-        });
-        scheduleBackup();
-        refresh();
       }
 
       function exportExcel() {
@@ -618,241 +563,14 @@
         URL.revokeObjectURL(url);
       }
 
-      function setConnectedUI(connected) {
-        els.addTripBtn.disabled = !connected;
-        els.exportBtn.disabled = !connected;
-        els.syncDriveBtn.disabled = !connected;
-        els.signOutBtn.disabled = !connected;
-      }
-
-      function renderDriveStatus(text) {
-        els.driveStatus.textContent = text;
-        els.storageState.textContent = text === 'Connected'
-          ? 'Loaded from Google Drive and saved per-user'
-          : 'Connect Google Drive to load your private logbook';
-      }
-
-      function currentToken() {
-        if (!accessToken) return '';
-        if (accessTokenExpiresAt && Date.now() > accessTokenExpiresAt - 30_000) return '';
-        return accessToken;
-      }
-
-      function authHeaders() {
-        const token = currentToken();
-        if (!token) throw new Error('Google Drive is not connected.');
-        return { Authorization: `Bearer ${token}` };
-      }
-
-      function loadGoogleScript() {
-        if (window.google?.accounts?.oauth2) return Promise.resolve();
-        if (googleScriptPromise) return googleScriptPromise;
-        googleScriptPromise = new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://accounts.google.com/gsi/client';
-          script.async = true;
-          script.defer = true;
-          script.onload = resolve;
-          script.onerror = () => reject(new Error('Could not load Google sign-in library.'));
-          document.head.appendChild(script);
-        });
-        return googleScriptPromise;
-      }
-
-      async function searchDriveFile() {
-        const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
-        const url = `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=appDataFolder&fields=files(id,name,modifiedTime)`;
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error('Unable to search Google Drive.');
-        const data = await res.json();
-        return data.files?.[0] || null;
-      }
-
-      async function loadFromDriveOrCreateBlank() {
-        const file = await searchDriveFile();
-        if (!file) {
-          state.trips = [];
-          state.odometerByFY = {};
-          state.dismissedPrompts = {};
-          await saveToDrive();
-          isLoadedFromDrive = true;
-          setConnectedUI(true);
-          renderDriveStatus('Connected');
-          refresh();
-          maybePromptForOdometer();
-          return;
-        }
-
-        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
-          headers: authHeaders(),
-        });
-        if (!res.ok) throw new Error('Could not load your Google Drive backup.');
-        const remote = await res.json();
-        state.trips = Array.isArray(remote.trips) ? remote.trips : [];
-        state.odometerByFY = remote.odometerByFY && typeof remote.odometerByFY === 'object' ? remote.odometerByFY : {};
-        state.dismissedPrompts = {};
-        isLoadedFromDrive = true;
-        setConnectedUI(true);
-        renderDriveStatus('Connected');
-        refresh();
-        maybePromptForOdometer();
-      }
-
-      function buildPayload() {
-        return {
-          version: 1,
-          updatedAt: new Date().toISOString(),
-          trips: state.trips,
-          odometerByFY: state.odometerByFY,
-        };
-      }
-
-      async function saveToDrive() {
-        const token = currentToken();
-        if (!token) return;
-        const existing = await searchDriveFile().catch(() => null);
-        const payload = JSON.stringify(buildPayload(), null, 2);
-
-        if (existing) {
-          const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=media`, {
-            method: 'PATCH',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-            body: payload,
-          });
-          if (!res.ok) throw new Error('Could not save to Google Drive.');
-          return;
-        }
-
-        const boundary = '-------314159265358979323846';
-        const body = [
-          `--${boundary}`,
-          'Content-Type: application/json; charset=UTF-8',
-          '',
-          JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' }),
-          `--${boundary}`,
-          'Content-Type: application/json',
-          '',
-          payload,
-          `--${boundary}--`,
-          '',
-        ].join('\r\n');
-
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
-          method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': `multipart/related; boundary=${boundary}` },
-          body,
-        });
-        if (!res.ok) throw new Error('Could not create Google Drive backup.');
-      }
-
-      function scheduleBackup() {
-        clearTimeout(backupTimer);
-        if (!currentToken()) return;
-        backupTimer = setTimeout(async () => {
-          try {
-            await saveToDrive();
-          } catch (error) {
-            console.error(error);
-          }
-        }, 900);
-      }
-
-      async function connectDrive() {
-        meta.googleClientId = els.clientIdInput.value.trim();
-        saveMeta();
-        if (!meta.googleClientId) {
-          alert('Paste your Google OAuth Client ID first.');
-          return;
-        }
-        try {
-          await loadGoogleScript();
-        } catch (error) {
-          alert(error.message);
-          return;
-        }
-
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: meta.googleClientId,
-          scope: 'https://www.googleapis.com/auth/drive.appdata',
-          callback: async response => {
-            if (response.error) {
-              alert('Google sign-in failed.');
-              return;
-            }
-            accessToken = response.access_token;
-            accessTokenExpiresAt = Date.now() + ((response.expires_in || 3600) * 1000);
-            try {
-              await loadFromDriveOrCreateBlank();
-            } catch (error) {
-              alert(error.message);
-            }
-          },
-        });
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-      }
-
-      async function syncNow() {
-        try {
-          await saveToDrive();
-        } catch (error) {
-          alert(error.message);
-        }
-      }
-
-      function signOut() {
-        accessToken = '';
-        accessTokenExpiresAt = 0;
-        isLoadedFromDrive = false;
-        state.trips = [];
-        state.odometerByFY = {};
-        state.dismissedPrompts = {};
-        setConnectedUI(false);
-        renderDriveStatus('Disconnected');
-        refresh();
-      }
-
-      function openInstallHelp() {
-        els.installText.textContent = /iphone|ipad|ipod/i.test(navigator.userAgent)
-          ? 'On iPhone, tap Share, then Add to Home Screen. On Android, the browser may show an install prompt.'
-          : 'Use the browser install prompt, or add the site to your home screen from the browser menu.';
-        els.installOverlay.classList.add('show');
-        els.installOverlay.setAttribute('aria-hidden', 'false');
-      }
-
-      function closeInstallHelp() {
-        els.installOverlay.classList.remove('show');
-        els.installOverlay.setAttribute('aria-hidden', 'true');
-      }
-
-      window.addEventListener('beforeinstallprompt', event => {
-        event.preventDefault();
-        deferredInstallPrompt = event;
-      });
-
       els.addTripBtn.addEventListener('click', addTrip);
       els.exportBtn.addEventListener('click', exportExcel);
-      els.connectDriveBtn.addEventListener('click', connectDrive);
-      els.syncDriveBtn.addEventListener('click', syncNow);
-      els.signOutBtn.addEventListener('click', signOut);
-      els.installBtn.addEventListener('click', async () => {
-        if (deferredInstallPrompt) {
-          deferredInstallPrompt.prompt();
-          await deferredInstallPrompt.userChoice;
-          deferredInstallPrompt = null;
-          return;
-        }
-        openInstallHelp();
-      });
-      els.installCloseBtn.addEventListener('click', closeInstallHelp);
-      els.installOverlay.addEventListener('click', event => {
-        if (event.target === els.installOverlay) closeInstallHelp();
-      });
       els.odoSaveBtn.addEventListener('click', saveOdometer);
       els.odoLaterBtn.addEventListener('click', () => {
         const fy = getFinancialYear();
         state.dismissedPrompts[fy.start] = true;
+        saveState();
         closeOdometerPrompt();
-        scheduleBackup();
       });
       els.odoInput.addEventListener('keydown', event => {
         if (event.key === 'Enter') saveOdometer();
@@ -861,22 +579,11 @@
         if (event.target === els.odoOverlay) {
           const fy = getFinancialYear();
           state.dismissedPrompts[fy.start] = true;
+          saveState();
           closeOdometerPrompt();
-          scheduleBackup();
         }
       });
-      els.clientIdInput.addEventListener('change', () => {
-        meta.googleClientId = els.clientIdInput.value.trim();
-        saveMeta();
-      });
 
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./github-logbook-sw.js').catch(() => {});
-      }
-
-      els.clientIdInput.value = meta.googleClientId || '';
-      setConnectedUI(false);
-      renderDriveStatus('Disconnected');
       refresh();
       maybePromptForOdometer();
     })();
